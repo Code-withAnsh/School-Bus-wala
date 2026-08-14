@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School Bus Wala - 90s Nostalgia</title>
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="bus-background">
+      <div class="dashboard-panel">
+        <div id="player-bar" class="player-bar">
+          <div class="album-art-container">
+            <div class="album-art-wrap">
+              <img
+                id="album-art"
+                class="album-art"
+                src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Crect width='120' height='120' fill='%2326111d'/%3E%3Ccircle cx='60' cy='60' r='36' fill='%23180c12'/%3E%3Cpath d='M60 25a35 35 0 1 1 0 70a35 35 0 0 1 0-70zm0 12a23 23 0 1 0 0 46a23 23 0 0 0 0-46zm0 10a13 13 0 1 1 0 26a13 13 0 0 1 0-26z' fill='%23ffb703'/%3E%3C/svg%3E"
+                alt="Album Cover"
+              />
+              <div class="vinyl-hole"></div>
+            </div>
+          </div>
+
+          <div class="player-middle">
+            <div class="track-meta">
+              <span id="track-title" class="track-title"
+                >Loading 90s track...</span
+              >
+              <span id="track-artist" class="track-artist"
+                >Fetching songs...</span
+              >
+            </div>
+
+            <div class="progress-row">
+              <div class="progress-container">
+                <input
+                  type="range"
+                  id="progress-bar"
+                  class="progress-bar"
+                  min="0"
+                  max="100"
+                  value="0"
+                  step="0.1"
+                  aria-label="Track progress"
+                />
+                <div id="progress-fill" class="progress-fill"></div>
+              </div>
+
+              <div class="time-container">
+                <span id="time-display" class="time-display">0:00 / 0:00</span>
+              </div>
+            </div>
+          </div>
+
+            <button
+              id="btn-playlist-toggle"
+              class="control-btn playlist-toggle"
+              title="Open song list"
+              aria-label="Open song list"
+            >
+              <i class="fa-solid fa-list-ul"></i>
+            </button>
+
+            <button
+              id="btn-prev"
+              class="control-btn"
+              title="Previous track"
+              aria-label="Previous track"
+            >
+              <i class="fas fa-backward"></i>
+            </button>
+
+            <button
+              id="btn-play-pause"
+              class="play-pause-btn"
+              title="Play / Pause"
+              aria-label="Play or pause music"
+            >
+              <i id="icon-play" class="fa-solid fa-play"></i>
+              <i id="icon-pause" class="fa-solid fa-pause hidden"></i>
+            </button>
+
+            <button
+              id="btn-next"
+              class="control-btn"
+              title="Next track"
+              aria-label="Next track"
+            >
+              <i class="fas fa-forward"></i>
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="playlist-panel"
+          class="playlist-panel hidden"
+          aria-live="polite"
+        >
+          <div class="playlist-header">
+            <span>All Songs</span>
+            <button
+              id="btn-close-playlist"
+              class="close-playlist"
+              aria-label="Close list"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <ul id="playlist-list" class="playlist-list"></ul>
+        </div>
+      </div>
+    </div>
+
+    <audio id="audio-player" preload="metadata"></audio>
+
+    <script src="script.js"></script>
+  </body>
+</html>
