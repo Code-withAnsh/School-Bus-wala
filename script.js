@@ -1,29 +1,51 @@
-const songNames = [
-  "Pehla Nasha",
-  "Dheere Dheere Se",
-  "Chura Ke Dil Mera",
-  "Aankhon Ki Gustakhiyan",
-  "Kya Kasoor Hai",
-  "Dil Ne Yeh Kaha",
-  "Tujhe Dekha To",
-  "Pardesi Pardesi",
-  "Tip Tip Barsa Pani",
-  "Laila O Laila",
-  "Mere Sapno Ki Rani",
-  "O Meri Jaan",
-  "Maanglahi Teri Dhoop",
-  "Tu Mere Samne",
-  "Main Khiladi Tu Anari",
-  "Jaane Jigar",
-  "Aaj Phir Jeene Ki Tamanna Hai",
-  "Aati Kya Khandala",
-  "Rajaji Teri Aankhon Ka",
+const MASTER_TRACK_SRC = encodeURI(
+  "songs/90s Bollywood All Time Hit Songs 90s Evergreen Songs 90s Hits Hindi Songs 90s Old Is Gold Songs.mp3",
+);
+
+const trackMarkers = [
+  { title: "Chunnari Chunnari", start: "00:00" },
+  { title: "Teri Chunnariya", start: "04:56" },
+  { title: "Pyar Dilon Ka Mela", start: "09:28" },
+  { title: "Chupke Se Koi Aayega", start: "14:26" },
+  { title: "Meri Tarah", start: "19:30" },
+  { title: "Meri Mehbooba", start: "24:07" },
+  { title: "Dil Laga Liya", start: "29:41" },
+  { title: "Aaye Ho Meri Zindagi", start: "33:53" },
+  { title: "Mohabbat Dil Ka Sakoon", start: "39:49" },
+  { title: "Sona Kitna Sona Hai", start: "45:22" },
+  { title: "Aa Jaana Aa Jana", start: "50:06" },
+  { title: "Raah Mein Unse", start: "55:22" },
+  { title: "Mile Jo Tere Naina", start: "01:03:57" },
 ];
 
-const tracks = songNames.map((title, index) => ({
-  title,
+function toSeconds(value) {
+  const parts = value.split(":").map((piece) => Number(piece));
+  if (parts.some((piece) => !Number.isFinite(piece))) {
+    return 0;
+  }
+
+  if (parts.length === 2) {
+    const [minutes, seconds] = parts;
+    return minutes * 60 + seconds;
+  }
+
+  if (parts.length === 3) {
+    const [hours, minutes, seconds] = parts;
+    return hours * 3600 + minutes * 60 + seconds;
+  }
+
+  return 0;
+}
+
+const tracks = trackMarkers.map((marker, index) => ({
+  title: marker.title,
   artist: "90s Bollywood Mix",
-  mp3: `songs/segment_${String(index).padStart(2, "0")}.mp3`,
+  startLabel: marker.start,
+  startSeconds: toSeconds(marker.start),
+  endSeconds:
+    index < trackMarkers.length - 1
+      ? toSeconds(trackMarkers[index + 1].start)
+      : null,
   cover:
     "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=600&q=80",
 }));
@@ -55,9 +77,41 @@ function formatTime(seconds) {
   }
 
   const safeSeconds = Math.max(0, Math.floor(seconds));
-  const minutes = Math.floor(safeSeconds / 60);
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
   const secs = safeSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }
+
   return `${minutes}:${String(secs).padStart(2, "0")}`;
+}
+
+function getTrackEnd(index) {
+  const track = tracks[index];
+  if (!track) {
+    return 0;
+  }
+
+  if (Number.isFinite(track.endSeconds)) {
+    return track.endSeconds;
+  }
+
+  if (Number.isFinite(audioPlayer.duration) && audioPlayer.duration > track.startSeconds) {
+    return audioPlayer.duration;
+  }
+
+  return track.startSeconds;
+}
+
+function getTrackDuration(index) {
+  const track = tracks[index];
+  if (!track) {
+    return 0;
+  }
+
+  return Math.max(0, getTrackEnd(index) - track.startSeconds);
 }
 
 function updatePlayButton() {
@@ -71,19 +125,26 @@ function updatePlayButton() {
 }
 
 function updateProgressUI() {
-  const duration = Number.isFinite(audioPlayer.duration)
-    ? audioPlayer.duration
-    : 0;
-  const current = Number.isFinite(audioPlayer.currentTime)
-    ? audioPlayer.currentTime
-    : 0;
-  const percentage = duration ? (current / duration) * 100 : 0;
+  const track = tracks[trackIndex];
+  if (!track) {
+    return;
+  }
 
-  progressBar.value = current;
-  progressBar.max = duration || 100;
+  const segmentDuration = getTrackDuration(trackIndex);
+  const absoluteCurrent = Number.isFinite(audioPlayer.currentTime)
+    ? audioPlayer.currentTime
+    : track.startSeconds;
+  const segmentCurrent = Math.min(
+    Math.max(0, absoluteCurrent - track.startSeconds),
+    segmentDuration,
+  );
+  const percentage = segmentDuration ? (segmentCurrent / segmentDuration) * 100 : 0;
+
+  progressBar.value = segmentCurrent;
+  progressBar.max = segmentDuration || 100;
   progressBar.style.setProperty("--progress", `${percentage}%`);
   progressFill.style.width = `${percentage}%`;
-  timeDisplay.textContent = `${formatTime(current)} / ${formatTime(duration)}`;
+  timeDisplay.textContent = `${formatTime(segmentCurrent)} / ${formatTime(segmentDuration)}`;
 }
 
 function renderPlaylist() {
@@ -96,7 +157,7 @@ function renderPlaylist() {
             class="playlist-item ${index === trackIndex ? "active" : ""}"
             data-index="${index}"
           >
-            ${index + 1}. ${track.title}
+            ${index + 1}. ${track.title} <span class="track-start-time">(${track.startLabel})</span>
           </button>
         </li>
       `,
@@ -112,38 +173,60 @@ function renderPlaylist() {
   });
 }
 
-function loadTrack(index, autoplay = isPlaying) {
-  const track = tracks[index];
-  if (!track) return;
+function startSelectedTrack(autoplay) {
+  const track = tracks[trackIndex];
+  if (!track) {
+    return;
+  }
 
-  isSwitchingTrack = true;
-  const shouldPlay = autoplay;
+  audioPlayer.currentTime = track.startSeconds;
+  updateProgressUI();
 
-  trackIndex = index;
-  titleEl.textContent = track.title;
-  artistEl.textContent = track.artist;
-  albumArt.src = track.cover || albumArt.src;
-
-  audioPlayer.pause();
-  audioPlayer.src = track.mp3;
-  audioPlayer.load();
-  audioPlayer.currentTime = 0;
-  progressBar.value = 0;
-  progressFill.style.width = "0%";
-  timeDisplay.textContent = "0:00 / 0:00";
-  renderPlaylist();
-
-  if (shouldPlay) {
+  if (autoplay) {
     const playPromise = audioPlayer.play();
     if (playPromise) {
       playPromise.catch(() => {});
     }
   }
+}
+
+function loadTrack(index, autoplay = isPlaying) {
+  const track = tracks[index];
+  if (!track) {
+    return;
+  }
+
+  isSwitchingTrack = true;
+  trackIndex = index;
+
+  titleEl.textContent = `${index + 1}. ${track.title}`;
+  artistEl.textContent = `90s Bollywood Mix • Starts at ${track.startLabel}`;
+  albumArt.src = track.cover || albumArt.src;
+  renderPlaylist();
+
+  const shouldReplaceSource = !audioPlayer.src || !audioPlayer.src.includes("90s%20Bollywood");
+  if (shouldReplaceSource) {
+    audioPlayer.pause();
+    audioPlayer.src = MASTER_TRACK_SRC;
+    audioPlayer.load();
+  }
+
+  if (audioPlayer.readyState >= 1) {
+    startSelectedTrack(autoplay);
+  } else {
+    audioPlayer.addEventListener(
+      "loadedmetadata",
+      () => {
+        startSelectedTrack(autoplay);
+      },
+      { once: true },
+    );
+  }
 
   requestAnimationFrame(() => {
     setTimeout(() => {
       isSwitchingTrack = false;
-    }, 150);
+    }, 120);
   });
 }
 
@@ -152,13 +235,17 @@ function selectTrack(index) {
 }
 
 function nextTrack() {
-  if (isSwitchingTrack) return;
+  if (isSwitchingTrack) {
+    return;
+  }
   const nextIndex = (trackIndex + 1) % tracks.length;
   loadTrack(nextIndex, true);
 }
 
 function prevTrack() {
-  if (isSwitchingTrack) return;
+  if (isSwitchingTrack) {
+    return;
+  }
   const prevIndex = (trackIndex - 1 + tracks.length) % tracks.length;
   loadTrack(prevIndex, true);
 }
@@ -187,35 +274,41 @@ closePlaylistBtn.addEventListener("click", () => {
 });
 
 progressBar.addEventListener("input", (event) => {
-  const newTime = Number(event.target.value);
-  if (Number.isFinite(newTime)) {
-    audioPlayer.currentTime = newTime;
-    updateProgressUI();
+  const segmentOffset = Number(event.target.value);
+  const track = tracks[trackIndex];
+  if (!track || !Number.isFinite(segmentOffset)) {
+    return;
   }
+
+  audioPlayer.currentTime = track.startSeconds + segmentOffset;
+  updateProgressUI();
 });
 
 audioPlayer.addEventListener("loadedmetadata", () => {
-  progressBar.max = audioPlayer.duration || 100;
   updateProgressUI();
-
-  if (isPlaying && audioPlayer.paused) {
-    const playPromise = audioPlayer.play();
-    if (playPromise) {
-      playPromise.catch(() => {});
-    }
-  }
 });
 
-audioPlayer.addEventListener("timeupdate", updateProgressUI);
+audioPlayer.addEventListener("timeupdate", () => {
+  const trackEnd = getTrackEnd(trackIndex);
+  if (!isSwitchingTrack && trackEnd > 0 && audioPlayer.currentTime >= trackEnd - 0.12) {
+    nextTrack();
+    return;
+  }
+
+  updateProgressUI();
+});
+
 audioPlayer.addEventListener("play", () => {
   isPlaying = true;
   updatePlayButton();
   isSwitchingTrack = false;
 });
+
 audioPlayer.addEventListener("pause", () => {
   isPlaying = false;
   updatePlayButton();
 });
+
 audioPlayer.addEventListener("ended", () => {
   if (!isSwitchingTrack) {
     nextTrack();
