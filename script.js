@@ -4,18 +4,18 @@ const MASTER_TRACK_SRC = encodeURI(
 
 const trackMarkers = [
   { title: "Chunnari Chunnari", start: "00:00" },
-  { title: "Teri Chunnariya", start: "04:56" },
-  { title: "Pyar Dilon Ka Mela", start: "09:28" },
-  { title: "Chupke Se Koi Aayega", start: "14:26" },
-  { title: "Meri Tarah", start: "19:30" },
-  { title: "Meri Mehbooba", start: "24:07" },
-  { title: "Dil Laga Liya", start: "29:41" },
-  { title: "Aaye Ho Meri Zindagi", start: "33:53" },
-  { title: "Mohabbat Dil Ka Sakoon", start: "39:49" },
-  { title: "Sona Kitna Sona Hai", start: "45:22" },
-  { title: "Aa Jaana Aa Jana", start: "50:06" },
-  { title: "Raah Mein Unse", start: "55:22" },
-  { title: "Mile Jo Tere Naina", start: "01:03:57" },
+  { title: "Teri Chunnariya", start: "04:59" },
+  { title: "Pyar Dilon Ka Mela", start: "09:31" },
+  { title: "Chupke Se Koi Aayega", start: "14:29" },
+  { title: "Meri Tarah", start: "19:33" },
+  { title: "Meri Mehbooba", start: "24:10" },
+  { title: "Dil Laga Liya", start: "29:44" },
+  { title: "Aaye Ho Meri Zindagi", start: "33:56" },
+  { title: "Mohabbat Dil Ka Sakoon", start: "39:52" },
+  { title: "Sona Kitna Sona Hai", start: "45:25" },
+  { title: "Aa Jaana Aa Jana", start: "50:09" },
+  { title: "Raah Mein Unse", start: "55:25" },
+  { title: "Mile Jo Tere Naina", start: "01:04:00" },
 ];
 
 function toSeconds(value) {
@@ -66,10 +66,12 @@ const playlistList = document.getElementById("playlist-list");
 const closePlaylistBtn = document.getElementById("btn-close-playlist");
 const iconPlay = document.getElementById("icon-play");
 const iconPause = document.getElementById("icon-pause");
+const PLAYER_STATE_KEY = "schoolBusWalaPlayerState";
 
 let trackIndex = 0;
 let isPlaying = false;
 let isSwitchingTrack = false;
+let restoredState = null;
 
 function formatTime(seconds) {
   if (!Number.isFinite(seconds)) {
@@ -112,6 +114,70 @@ function getTrackDuration(index) {
   }
 
   return Math.max(0, getTrackEnd(index) - track.startSeconds);
+}
+
+function savePlayerState() {
+  const track = tracks[trackIndex];
+  if (!track) {
+    return;
+  }
+
+  const state = {
+    trackIndex,
+    currentTime: Number.isFinite(audioPlayer.currentTime)
+      ? audioPlayer.currentTime
+      : track.startSeconds,
+    wasPlaying: isPlaying,
+  };
+
+  try {
+    localStorage.setItem(PLAYER_STATE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.error("Failed to save player state:", error);
+  }
+}
+
+function loadPlayerState() {
+  let rawState = null;
+  try {
+    rawState = localStorage.getItem(PLAYER_STATE_KEY);
+  } catch (error) {
+    console.error("Failed to read player state:", error);
+    return null;
+  }
+
+  if (!rawState) {
+    return null;
+  }
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(rawState);
+  } catch (error) {
+    console.error("Failed to parse player state:", error);
+    return null;
+  }
+
+  if (
+    !parsed ||
+    !Number.isInteger(parsed.trackIndex) ||
+    parsed.trackIndex < 0 ||
+    parsed.trackIndex >= tracks.length
+  ) {
+    return null;
+  }
+
+  const track = tracks[parsed.trackIndex];
+  const trackEnd = Number.isFinite(track.endSeconds) ? track.endSeconds : Infinity;
+  const safeCurrentTime = Number.isFinite(parsed.currentTime)
+    ? Math.min(Math.max(parsed.currentTime, track.startSeconds), trackEnd)
+    : track.startSeconds;
+
+  return {
+    trackIndex: parsed.trackIndex,
+    currentTime: safeCurrentTime,
+    wasPlaying: parsed.wasPlaying === true,
+  };
 }
 
 function updatePlayButton() {
@@ -173,14 +239,21 @@ function renderPlaylist() {
   });
 }
 
-function startSelectedTrack(autoplay) {
+function startSelectedTrack(autoplay, initialCurrentTime = null) {
   const track = tracks[trackIndex];
   if (!track) {
     return;
   }
 
-  audioPlayer.currentTime = track.startSeconds;
+  const trackEnd = getTrackEnd(trackIndex);
+  const fallbackTime = track.startSeconds;
+  const safeInitialTime = Number.isFinite(initialCurrentTime)
+    ? Math.min(Math.max(initialCurrentTime, track.startSeconds), trackEnd || Infinity)
+    : fallbackTime;
+
+  audioPlayer.currentTime = safeInitialTime;
   updateProgressUI();
+  savePlayerState();
 
   if (autoplay) {
     const playPromise = audioPlayer.play();
@@ -190,7 +263,7 @@ function startSelectedTrack(autoplay) {
   }
 }
 
-function loadTrack(index, autoplay = isPlaying) {
+function loadTrack(index, autoplay = isPlaying, initialCurrentTime = null) {
   const track = tracks[index];
   if (!track) {
     return;
@@ -212,12 +285,12 @@ function loadTrack(index, autoplay = isPlaying) {
   }
 
   if (audioPlayer.readyState >= 1) {
-    startSelectedTrack(autoplay);
+    startSelectedTrack(autoplay, initialCurrentTime);
   } else {
     audioPlayer.addEventListener(
       "loadedmetadata",
       () => {
-        startSelectedTrack(autoplay);
+        startSelectedTrack(autoplay, initialCurrentTime);
       },
       { once: true },
     );
@@ -231,7 +304,7 @@ function loadTrack(index, autoplay = isPlaying) {
 }
 
 function selectTrack(index) {
-  loadTrack(index, true);
+  loadTrack(index, true, null);
 }
 
 function nextTrack() {
@@ -282,10 +355,12 @@ progressBar.addEventListener("input", (event) => {
 
   audioPlayer.currentTime = track.startSeconds + segmentOffset;
   updateProgressUI();
+  savePlayerState();
 });
 
 audioPlayer.addEventListener("loadedmetadata", () => {
   updateProgressUI();
+  savePlayerState();
 });
 
 audioPlayer.addEventListener("timeupdate", () => {
@@ -296,17 +371,20 @@ audioPlayer.addEventListener("timeupdate", () => {
   }
 
   updateProgressUI();
+  savePlayerState();
 });
 
 audioPlayer.addEventListener("play", () => {
   isPlaying = true;
   updatePlayButton();
   isSwitchingTrack = false;
+  savePlayerState();
 });
 
 audioPlayer.addEventListener("pause", () => {
   isPlaying = false;
   updatePlayButton();
+  savePlayerState();
 });
 
 audioPlayer.addEventListener("ended", () => {
@@ -315,5 +393,16 @@ audioPlayer.addEventListener("ended", () => {
   }
 });
 
+window.addEventListener("beforeunload", savePlayerState);
+
+restoredState = loadPlayerState();
+if (restoredState) {
+  trackIndex = restoredState.trackIndex;
+}
+
 renderPlaylist();
-loadTrack(trackIndex, false);
+loadTrack(
+  trackIndex,
+  restoredState ? restoredState.wasPlaying : false,
+  restoredState ? restoredState.currentTime : null,
+);
