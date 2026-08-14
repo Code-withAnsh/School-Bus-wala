@@ -32,7 +32,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-end;
-  padding: 24px 16px 32px;
+  padding: 24px 16px max(24px, env(safe-area-inset-bottom));
   position: relative;
 }
 
@@ -51,7 +51,7 @@ body {
 .dashboard-panel {
   position: relative;
   z-index: 1;
-  width: min(620px, 100%);
+  width: min(680px, 100%);
   padding: 12px 12px 10px;
   border-radius: 22px;
   background: rgba(14, 14, 18, 0.88);
@@ -64,7 +64,7 @@ body {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 14px;
+  padding: 14px 14px;
   border-radius: 18px;
   background: linear-gradient(
     145deg,
@@ -101,8 +101,8 @@ body {
 
 .vinyl-hole {
   position: absolute;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   background: rgba(1, 1, 1, 0.9);
   border-radius: 50%;
   left: 50%;
@@ -133,9 +133,9 @@ body {
 }
 
 .track-artist {
-  font-size: 0.7rem;
+  font-size: 0.74rem;
   color: #8ebae7;
-  letter-spacing: 0.08rem;
+  letter-spacing: 0.05rem;
   text-transform: uppercase;
 }
 
@@ -213,6 +213,7 @@ body {
   justify-content: center;
   gap: 10px;
   flex-shrink: 0;
+  flex-wrap: nowrap;
 }
 
 .control-btn,
@@ -220,8 +221,8 @@ body {
   border: none;
   background: rgba(255, 255, 255, 0.04);
   color: #f2f5ff;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -240,8 +241,8 @@ body {
 }
 
 .play-pause-btn {
-  width: 46px;
-  height: 46px;
+  width: 50px;
+  height: 50px;
   background: linear-gradient(135deg, #ff8a1d, #ff5c5c);
   color: white;
   box-shadow: 0 14px 28px rgba(255, 94, 61, 0.4);
@@ -249,7 +250,7 @@ body {
 
 .playlist-panel {
   margin-top: 10px;
-  max-height: 240px;
+  max-height: min(46dvh, 320px);
   overflow: auto;
   background: rgba(10, 12, 18, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -322,39 +323,70 @@ body {
 }
 
 @media (max-width: 900px) {
+  .bus-background {
+    padding: 16px 12px max(16px, env(safe-area-inset-bottom));
+  }
+
+  .dashboard-panel {
+    border-radius: 18px;
+    padding: 10px;
+  }
+
   .player-bar {
     flex-wrap: wrap;
+    gap: 12px;
   }
 
   .player-middle {
     min-width: 100%;
   }
+
+  .progress-row {
+    gap: 8px;
+  }
 }
 
 @media (max-width: 760px) {
-  .dashboard-panel {
-    padding: 10px;
-  }
-
   .player-bar {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 12px 10px;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "art controls"
+      "meta meta";
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 10px;
+    padding: 12px;
   }
 
   .album-art-container {
+    grid-area: art;
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
+    align-items: center;
+  }
+
+  .album-art-wrap {
+    width: 62px;
+    height: 62px;
+  }
+
+  .player-middle {
+    grid-area: meta;
+    min-width: 0;
   }
 
   .player-controls {
-    justify-content: center;
-    width: 100%;
+    grid-area: controls;
+    justify-content: flex-end;
+    width: auto;
+    gap: 8px;
   }
 
   .progress-row {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
   }
 
   .time-container {
@@ -365,27 +397,75 @@ body {
   .track-title {
     white-space: normal;
     line-height: 1.3;
+    font-size: 0.96rem;
+  }
+
+  .track-artist {
+    font-size: 0.7rem;
   }
 }
 
 @media (max-width: 420px) {
+  .dashboard-panel {
+    border-radius: 14px;
+    padding: 8px;
+  }
+
+  .player-bar {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "art"
+      "controls"
+      "meta";
+    justify-items: center;
+    text-align: center;
+  }
+
+  .album-art-container {
+    justify-content: center;
+  }
+
+  .album-art-wrap {
+    width: 58px;
+    height: 58px;
+  }
+
+  .player-controls {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .track-meta {
+    align-items: center;
+  }
+
   .track-title {
-    font-size: 0.92rem;
+    font-size: 0.9rem;
   }
 
   .track-artist {
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     letter-spacing: 0.04rem;
   }
 
   .control-btn,
   .play-pause-btn {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
   }
 
   .play-pause-btn {
-    width: 46px;
-    height: 46px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .playlist-panel {
+    max-height: min(52dvh, 360px);
+    padding: 8px;
+  }
+
+  .playlist-item {
+    font-size: 0.78rem;
+    padding: 10px;
   }
 }
